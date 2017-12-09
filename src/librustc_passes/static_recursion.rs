@@ -33,17 +33,13 @@ struct CheckCrateVisitor<'a, 'hir: 'a> {
     detected_recursive_ids: NodeSet,
 }
 
-impl<'a, 'hir: 'a> Visitor<'hir> for CheckCrateVisitor<'a, 'hir> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'hir> {
-        NestedVisitorMap::None
-    }
-
-    fn visit_item(&mut self, it: &'hir hir::Item) {
-        match it.node {
+impl<'a, 'hir: 'a> hir::itemlikevisit::ItemLikeVisitor<'hir> for CheckCrateVisitor<'a, 'hir> {
+    fn visit_item(&mut self, item: &'hir hir::Item) {
+        match item.node {
             hir::ItemStatic(..) |
             hir::ItemConst(..) => {
                 let mut recursion_visitor = CheckItemRecursionVisitor::new(self);
-                recursion_visitor.visit_item(it);
+                recursion_visitor.visit_item(item);
             }
             hir::ItemEnum(ref enum_def, ref generics) => {
                 // We could process the whole enum, but handling the variants
@@ -53,37 +49,34 @@ impl<'a, 'hir: 'a> Visitor<'hir> for CheckCrateVisitor<'a, 'hir> {
                     if let Some(_) = variant.node.disr_expr {
                         let mut recursion_visitor = CheckItemRecursionVisitor::new(self);
                         recursion_visitor.populate_enum_discriminants(enum_def);
-                        recursion_visitor.visit_variant(variant, generics, it.id);
+                        recursion_visitor.visit_variant(variant, generics, item.id);
                     }
                 }
             }
             _ => {}
         }
-        intravisit::walk_item(self, it)
     }
 
-    fn visit_trait_item(&mut self, ti: &'hir hir::TraitItem) {
-        match ti.node {
+    fn visit_trait_item(&mut self, trait_item: &'hir hir::TraitItem) {
+        match trait_item.node {
             hir::TraitItemKind::Const(_, ref default) => {
                 if let Some(_) = *default {
                     let mut recursion_visitor = CheckItemRecursionVisitor::new(self);
-                    recursion_visitor.visit_trait_item(ti);
+                    recursion_visitor.visit_trait_item(trait_item);
                 }
             }
             _ => {}
         }
-        intravisit::walk_trait_item(self, ti)
     }
 
-    fn visit_impl_item(&mut self, ii: &'hir hir::ImplItem) {
-        match ii.node {
+    fn visit_impl_item(&mut self, impl_item: &'hir hir::ImplItem) {
+        match impl_item.node {
             hir::ImplItemKind::Const(..) => {
                 let mut recursion_visitor = CheckItemRecursionVisitor::new(self);
-                recursion_visitor.visit_impl_item(ii);
+                recursion_visitor.visit_impl_item(impl_item);
             }
             _ => {}
         }
-        intravisit::walk_impl_item(self, ii)
     }
 }
 
@@ -97,8 +90,7 @@ pub fn check_crate<'hir>(sess: &Session, hir_map: &hir_map::Map<'hir>)
         detected_recursive_ids: NodeSet(),
     };
     sess.track_errors(|| {
-        // FIXME(#37712) could use ItemLikeVisitor if trait items were item-like
-        hir_map.krate().visit_all_item_likes(&mut visitor.as_deep_visitor());
+        hir_map.krate().visit_all_item_likes(&mut visitor);
     })
 }
 
