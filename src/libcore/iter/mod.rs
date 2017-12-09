@@ -1836,7 +1836,7 @@ impl<I: Iterator> Iterator for Peekable<I> {
 
     #[inline]
     fn nth(&mut self, n: usize) -> Option<I::Item> {
-        // FIXME(#6393): merge these when borrow-checking gets better.
+        // FIXME(RFC 811): merge these when borrow-checking gets better.
         if n == 0 {
             match self.peeked.take() {
                 Some(v) => v,

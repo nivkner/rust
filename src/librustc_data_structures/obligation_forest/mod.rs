@@ -416,7 +416,7 @@ impl<O: ForestObligation> ObligationForest<O> {
         }
 
         loop {
-            // non-standard `while let` to bypass #6393
+            // non-standard `while let` to bypass RFC 811
             let i = match error_stack.pop() {
                 Some(i) => i,
                 None => break
